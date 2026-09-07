@@ -9,9 +9,11 @@ Este projeto implementa um fluxo simples de signin/signup com:
 - cadastro de usuário
 - hash de senha com bcrypt
 - geração de token JWT
+- geração e rotação de refresh token
 - autenticação por bearer token
 - persistência em MongoDB com Mongoose
 - validação de entrada com class-validator
+- documentação da API com Swagger
 
 O projeto foi estruturado em módulos para separar responsabilidades entre autenticação e usuários.
 
@@ -21,6 +23,7 @@ O projeto foi estruturado em módulos para separar responsabilidades entre auten
 - TypeScript
 - MongoDB + Mongoose
 - Passport + JWT
+- Swagger / OpenAPI
 - bcrypt
 - class-validator / class-transformer
 - Jest
@@ -42,6 +45,7 @@ src/
 │       └── jwt.strategy.ts
 ├── users/
 │   ├── dto/
+│   │   ├── refresh-token.dto.ts
 │   │   ├── signin.dto.ts
 │   │   └── signup.dto.ts
 │   ├── models/
@@ -59,8 +63,10 @@ src/
 2. O usuário é salvo no MongoDB e a senha é hasheada antes de persistir.
 3. O cliente envia credenciais para `POST /users/signin`.
 4. A aplicação valida o email e compara a senha com o hash salvo.
-5. Se correto, gera um token JWT com `userId` e retorna para o cliente.
-6. As rotas protegidas usam o `JwtStrategy` para validar o bearer token informado no header `Authorization`.
+5. Se correto, gera um access token JWT com `userId` e um refresh token.
+6. Quando o access token expira, o cliente envia o refresh token para `POST /users/refresh`.
+7. A aplicação valida o refresh token, gera novos tokens e invalida o ciclo anterior por rotação.
+8. As rotas protegidas usam o `JwtStrategy` para validar o bearer token informado no header `Authorization`.
 
 ## Requisitos
 
@@ -75,6 +81,7 @@ Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
 ```env
 MONGO_URI=mongodb://127.0.0.1:27017/nest-signin
 JWT_SECRET=sua-chave-secreta-muito-forte
+JWT_REFRESH_SECRET=outra-chave-secreta-muito-forte
 PORT=3001
 ```
 
@@ -98,6 +105,16 @@ npm run start:dev
 # build da aplicação
 npm run build
 ```
+
+### Swagger
+
+Com a aplicação em execução, acesse a documentação interativa em:
+
+```text
+http://localhost:3001/api/docs
+```
+
+Se a variável `PORT` estiver configurada com outra porta, substitua `3001` na URL. Para testar os endpoints protegidos, use o botão `Authorize` e informe `Bearer <token>`.
 
 ## Testes
 
@@ -143,7 +160,29 @@ Resposta esperada:
 {
   "name": "João Silva",
   "email": "joao@email.com",
-  "jwtToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "jwtToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+### POST /users/refresh
+
+Renova o access token usando um refresh token válido.
+
+Body:
+
+```json
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+Resposta esperada:
+
+```json
+{
+  "jwtToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 ```
 
@@ -160,18 +199,16 @@ Authorization: Bearer <token>
 ## Observações de segurança e qualidade
 
 - A senha é salva em formato hashado com bcrypt.
-- O token JWT expira em 1 dia.
+- O access token JWT expira em 1 hora.
+- O refresh token expira em 7 dias e é rotacionado a cada renovação.
 - As rotas sensíveis exigem autenticação do tipo bearer token.
 - O `ValidationPipe` é ativado globalmente para validar DTOs automaticamente.
-- O código foi ajustado para evitar erros de configuração do TypeScript e melhorar a robustez do JWT e do MongoDB.
+- A documentação interativa está disponível em `GET /api/docs`.
 
 ## Melhorias futuras
 
 - separar respostas de login em payload mais descritivo
-- adicionar refresh token
 - incluir paginação na listagem de usuários
-- adicionar testes unitários para auth e users
-- criar documentação de Swagger/OpenAPI
 - configurar ambientes de produção com variáveis seguras e autenticação de banco adequada
 
 ## Autor
