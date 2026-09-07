@@ -9,11 +9,14 @@ import { AuthModule } from './auth/auth.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true, // Torna o módulo disponível globalmente na aplicação{como o arquivo .env}
+      isGlobal: true,
+      envFilePath: ['.env', '.env.local'],
     }),
     UsersModule,
     AuthModule,
-    MongooseModule.forRoot(process.env.MONGO_URI as string),
+    MongooseModule.forRoot(
+      process.env.MONGO_URI ?? 'mongodb://127.0.0.1:27017/nest-signin',
+    ),
   ],
   controllers: [AppController],
   providers: [AppService],
