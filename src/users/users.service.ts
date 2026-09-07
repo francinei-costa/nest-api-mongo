@@ -11,6 +11,9 @@ import { User } from './models/users.model';
 import { AuthService } from './../auth/auth.service';
 import { SigninDto } from './dto/signin.dto';
 import { SignupDto } from './dto/signup.dto';
+import { SigninResponseDto } from './dto/signin-response.dto';
+import { UsersQueryDto } from './dto/users-query.dto';
+import { UsersListResponseDto } from './dto/users-response.dto';
 
 @Injectable()
 export class UsersService {
@@ -33,12 +36,7 @@ export class UsersService {
     return user.save();
   }
 
-  public async signin(signinDto: SigninDto): Promise<{
-    name: string | undefined;
-    jwtToken: string;
-    refreshToken: string;
-    email: string | undefined;
-  }> {
+  public async signin(signinDto: SigninDto): Promise<SigninResponseDto> {
     const user = await this.findByEmail(signinDto.email);
     const match = await this.checkPassword(signinDto.password, user as User);
 
@@ -54,10 +52,15 @@ export class UsersService {
     );
 
     return {
-      name: user?.name,
-      email: user?.email,
-      jwtToken,
+      user: {
+        id: user!._id.toString(),
+        name: user!.name,
+        email: user!.email,
+      },
+      accessToken: jwtToken,
       refreshToken,
+      tokenType: 'Bearer',
+      expiresIn: 3600,
     };
   }
 
@@ -77,8 +80,20 @@ export class UsersService {
     };
   }
 
-  public async findAll(): Promise<User[]> {
-    return this.userModel.find().select('-password');
+  public async findAll(query: UsersQueryDto): Promise<UsersListResponseDto> {
+    const skip = (query.page - 1) * query.limit;
+    const [data, total] = await Promise.all([
+      this.userModel.find().select('-password').skip(skip).limit(query.limit),
+      this.userModel.countDocuments(),
+    ]);
+
+    return {
+      data,
+      page: query.page,
+      limit: query.limit,
+      total,
+      totalPages: Math.ceil(total / query.limit),
+    };
   }
 
   private async findByEmail(email: string): Promise<User | null> {

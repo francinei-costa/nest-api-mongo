@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import type { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Request } from 'express';
 import { Model } from 'mongoose';
@@ -12,13 +14,16 @@ import { JwtPayload } from './models/jwt-payload.model';
 
 @Injectable()
 export class AuthService {
-  constructor(@InjectModel('User') private readonly userModel: Model<User>) {}
+  constructor(
+    @InjectModel('User') private readonly userModel: Model<User>,
+    @Inject('CONFIG_SERVICE') private readonly configService: ConfigService,
+  ) {}
 
   // eslint-disable-next-line @typescript-eslint/require-await
   public async createAccessToken(userId: string): Promise<string> {
     return sign(
       { userId, type: 'access' },
-      process.env.JWT_SECRET || 'default-secret',
+      this.configService.getOrThrow<string>('JWT_SECRET'),
       {
         expiresIn: '1h',
       },
@@ -29,9 +34,7 @@ export class AuthService {
   public async createRefreshToken(userId: string): Promise<string> {
     return sign(
       { userId, type: 'refresh' },
-      process.env.JWT_REFRESH_SECRET ||
-        process.env.JWT_SECRET ||
-        'default-secret',
+      this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
       {
         expiresIn: '7d',
       },
@@ -57,9 +60,7 @@ export class AuthService {
       try {
         const payload = verify(
           refreshToken,
-          process.env.JWT_REFRESH_SECRET ||
-            process.env.JWT_SECRET ||
-            'default-secret',
+          this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
         ) as JwtPayload;
 
         if (!payload.userId || payload.type !== 'refresh') {
