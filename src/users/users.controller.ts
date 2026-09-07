@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -21,6 +22,9 @@ import { SigninDto } from './dto/signin.dto';
 import { SignupDto } from './dto/signup.dto';
 import { UsersService } from './users.service';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { SigninResponseDto } from './dto/signin-response.dto';
+import { UsersQueryDto } from './dto/users-query.dto';
+import { UsersListResponseDto } from './dto/users-response.dto';
 
 @ApiTags('Users')
 @Controller('users')
@@ -41,12 +45,10 @@ export class UsersController {
   @ApiOperation({ summary: 'Realiza login e gera tokens JWT e refresh' })
   @ApiResponse({ status: 200, description: 'Login realizado com sucesso' })
   @ApiBody({ type: SigninDto })
-  public async signin(@Body() signinDto: SigninDto): Promise<{
-    name: string | undefined;
-    jwtToken: string;
-    refreshToken: string;
-    email: string | undefined;
-  }> {
+  @ApiResponse({ type: SigninResponseDto })
+  public async signin(
+    @Body() signinDto: SigninDto,
+  ): Promise<SigninResponseDto> {
     return this.usersService.signin(signinDto);
   }
 
@@ -67,8 +69,14 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Lista usuários autenticados' })
-  @ApiResponse({ status: 200, description: 'Lista de usuários' })
-  public async findAll(): Promise<User[]> {
-    return this.usersService.findAll();
+  @ApiResponse({
+    status: 200,
+    description: 'Lista paginada de usuários',
+    type: UsersListResponseDto,
+  })
+  public async findAll(
+    @Query() query: UsersQueryDto,
+  ): Promise<UsersListResponseDto> {
+    return this.usersService.findAll(query);
   }
 }

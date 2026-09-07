@@ -22,10 +22,12 @@ describe('UsersService', () => {
   })) as jest.Mock & {
     findOne: jest.Mock;
     find: jest.Mock;
+    countDocuments: jest.Mock;
   };
 
   userModel.findOne = jest.fn();
   userModel.find = jest.fn();
+  userModel.countDocuments = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -83,9 +85,10 @@ describe('UsersService', () => {
 
     expect(authService.createAccessToken).toHaveBeenCalledWith('user-123');
     expect(result).toMatchObject({
-      name: 'Maria',
-      email: 'maria@email.com',
-      jwtToken: 'jwt-token',
+      user: { id: 'user-123', name: 'Maria', email: 'maria@email.com' },
+      accessToken: 'jwt-token',
+      tokenType: 'Bearer',
+      expiresIn: 3600,
     });
     expect(typeof result.refreshToken).toBe('string');
   });
@@ -107,5 +110,27 @@ describe('UsersService', () => {
         password: 'wrong-password',
       }),
     ).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('should return a paginated list without passwords', async () => {
+    const limit = jest
+      .fn()
+      .mockResolvedValue([
+        { _id: 'user-1', name: 'Maria', email: 'maria@email.com' },
+      ]);
+    const skip = jest.fn().mockReturnValue({ limit });
+    const select = jest.fn().mockReturnValue({ skip });
+    userModel.find.mockReturnValue({ select });
+    userModel.countDocuments.mockResolvedValue(11);
+
+    await expect(service.findAll({ page: 2, limit: 10 })).resolves.toEqual({
+      data: [{ _id: 'user-1', name: 'Maria', email: 'maria@email.com' }],
+      page: 2,
+      limit: 10,
+      total: 11,
+      totalPages: 2,
+    });
+    expect(skip).toHaveBeenCalledWith(10);
+    expect(limit).toHaveBeenCalledWith(10);
   });
 });

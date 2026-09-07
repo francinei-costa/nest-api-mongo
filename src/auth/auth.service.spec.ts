@@ -8,11 +8,16 @@ describe('AuthService', () => {
   const userModel: { findOne: jest.Mock } = {
     findOne: jest.fn(),
   };
+  const configService = {
+    getOrThrow: jest.fn((key: string) =>
+      key === 'JWT_REFRESH_SECRET' ? 'test-refresh-secret' : 'test-secret',
+    ),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.JWT_SECRET = 'test-secret';
-    service = new AuthService(userModel as never);
+    service = new AuthService(userModel as never, configService as never);
   });
 
   it('should create a JWT token for a valid user id', async () => {

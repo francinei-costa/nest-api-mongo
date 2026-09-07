@@ -19,8 +19,13 @@ import { JwtStrategy } from './strategies/jwt.strategy';
         signOptions: { expiresIn: '1d' },
       }),
     }),
+    ConfigModule,
   ],
-  providers: [AuthService, JwtStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    { provide: 'CONFIG_SERVICE', useExisting: ConfigService },
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}
